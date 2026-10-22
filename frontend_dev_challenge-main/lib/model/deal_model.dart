@@ -68,4 +68,26 @@ class DealModel {
 
   int get discountPercent =>
       originalPrice <= 0 ? 0 : (100 - (price / originalPrice * 100)).round();
+
+  DealModel copyWithQuantityLeft(int quantityLeft) {
+    return DealModel(
+      id: id,
+      name: name,
+      description: description,
+      imageUrl: imageUrl,
+      originalPrice: originalPrice,
+      price: price,
+      currencyCode: currencyCode,
+      quantityLeft: quantityLeft,
+      storeId: storeId,
+      storeName: storeName,
+      storeAddress: storeAddress,
+      lat: lat,
+      lng: lng,
+      rating: rating,
+      tags: tags,
+      pickupWindow: pickupWindow,
+      flashSaleEndsAt: flashSaleEndsAt,
+    );
+  }
 }

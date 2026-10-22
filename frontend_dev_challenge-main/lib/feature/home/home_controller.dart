@@ -110,6 +110,18 @@ class HomeController extends GetxController {
     refreshController.loadComplete();
   }
 
+  void applyPurchase(Map<int, int> boughtByDealId) {
+    DealModel reduced(DealModel d) {
+      final bought = boughtByDealId[d.id];
+      if (bought == null) return d;
+      final left = d.quantityLeft - bought;
+      return d.copyWithQuantityLeft(left < 0 ? 0 : left);
+    }
+
+    deals.assignAll(deals.map(reduced).toList());
+    flashDeals.assignAll(flashDeals.map(reduced).toList());
+  }
+
   void scrollToTop() {
     scrollController.animateTo(0,
         duration: const Duration(milliseconds: 400), curve: Curves.easeOut);

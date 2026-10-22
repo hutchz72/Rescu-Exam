@@ -7,6 +7,7 @@ import '../../repository/order_repo.dart';
 import '../../service/api_exception.dart';
 import '../../service/cart_service.dart';
 import '../../util/log_service.dart';
+import '../home/home_controller.dart';
 
 class CartController extends GetxController {
   final CartService cartService;
@@ -74,8 +75,13 @@ class CartController extends GetxController {
 
     isCheckingOut.value = true;
     try {
+      if (!await _prepareReservations()) return;
+      final bought = {for (final i in cartService.items) i.deal.id: i.quantity};
       final order = await orderRepo.checkout(cartService.items.toList());
       cartService.clear();
+      if (Get.isRegistered<HomeController>()) {
+        Get.find<HomeController>().applyPurchase(bought);
+      }
       Get.snackbar(
         'Order confirmed',
         'Order #${order.id} — pick up soon!',
@@ -83,6 +89,10 @@ class CartController extends GetxController {
       );
     } on ApiException catch (e) {
       LogService.error('checkout failed', e);
+      if (e.statusCode == 410) {
+        _onReservationExpired();
+        return;
+      }
       Get.snackbar(
         'Checkout failed',
         e.message,
@@ -91,5 +101,35 @@ class CartController extends GetxController {
     } finally {
       isCheckingOut.value = false;
     }
+  }
+
+  Future<bool> _prepareReservations() async {
+    final before = cartService.signature;
+    await cartService.settle();
+    if (cartService.items.isEmpty || cartService.signature != before) {
+      return false;
+    }
+
+    if (cartService.items.any((i) => !i.hasValidHold)) {
+      final ok = await cartService.renewExpired();
+      if (!ok) {
+        Get.snackbar(
+          'Your bag changed',
+          'Some items could not be held again. Please review your bag and check out again.',
+          snackPosition: SnackPosition.BOTTOM,
+        );
+        return false;
+      }
+    }
+    return true;
+  }
+
+  void _onReservationExpired() {
+    cartService.markHoldsExpired();
+    Get.snackbar(
+      'Your reserved time ran out',
+      "We couldn't confirm your order in time. You haven't been charged. Tap Checkout again to reserve and continue.",
+      snackPosition: SnackPosition.BOTTOM,
+    );
   }
 }

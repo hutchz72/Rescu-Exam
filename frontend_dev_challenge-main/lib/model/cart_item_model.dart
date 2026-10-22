@@ -9,7 +9,15 @@ class CartItemModel {
   /// see the "Reservations" feature task.
   ReservationModel? reservation;
 
+  bool isSyncing = false;
+  bool holdLost = false;
+
   CartItemModel({required this.deal, this.quantity = 1, this.reservation});
 
   num get lineTotal => deal.price * quantity;
+
+  bool get hasValidHold =>
+      reservation != null && !holdLost && !reservation!.isExpired;
+
+  bool get isExpired => reservation != null && !hasValidHold;
 }

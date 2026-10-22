@@ -2,6 +2,9 @@ import 'package:flutter/material.dart';
 import 'package:get/get.dart';
 
 import '../../app_config.dart';
+import '../../model/cart_item_model.dart';
+import '../../service/cart_service.dart';
+import '../shared_widget/reservation_countdown.dart';
 import '../shared_widget/the_network_image.dart';
 import 'cart_controller.dart';
 
@@ -45,17 +48,16 @@ class CartScreen extends GetView<CartController> {
                               maxLines: 1,
                               overflow: TextOverflow.ellipsis,
                               style: const TextStyle(
-                                  fontSize: 14.5,
-                                  fontWeight: FontWeight.w600)),
+                                  fontSize: 14.5, fontWeight: FontWeight.w600)),
                           Text(item.deal.storeName,
                               style: TextStyle(
-                                  fontSize: 12.5,
-                                  color: Colors.grey.shade600)),
+                                  fontSize: 12.5, color: Colors.grey.shade600)),
                           Text('฿${item.deal.price.toStringAsFixed(0)} each',
                               style: const TextStyle(
                                   fontSize: 13,
                                   color: AppConfig.primaryGreen,
                                   fontWeight: FontWeight.w600)),
+                          _HoldStatus(item: item),
                         ],
                       ),
                     ),
@@ -67,8 +69,8 @@ class CartScreen extends GetView<CartController> {
                           onPressed: () => cart.decrement(item.deal.id),
                         ),
                         Text('${item.quantity}',
-                            style: const TextStyle(
-                                fontWeight: FontWeight.bold)),
+                            style:
+                                const TextStyle(fontWeight: FontWeight.bold)),
                         IconButton(
                           visualDensity: VisualDensity.compact,
                           icon: const Icon(Icons.add_circle_outline),
@@ -118,6 +120,66 @@ class CartScreen extends GetView<CartController> {
           ),
         );
       }),
+    );
+  }
+}
+
+class _HoldStatus extends StatelessWidget {
+  final CartItemModel item;
+
+  const _HoldStatus({required this.item});
+
+  @override
+  Widget build(BuildContext context) {
+    const small = TextStyle(fontSize: 12.5, fontWeight: FontWeight.w600);
+    if (item.hasValidHold) {
+      return Padding(
+        padding: const EdgeInsets.only(top: 2),
+        child: Row(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Icon(Icons.timer_outlined, size: 14, color: Colors.grey.shade700),
+            const SizedBox(width: 4),
+            ReservationCountdown(
+              expiresAt: item.reservation!.expiresAt,
+              style: small.copyWith(color: Colors.grey.shade700),
+            ),
+          ],
+        ),
+      );
+    }
+    if (item.isExpired) {
+      return Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Text('Hold expired',
+              style: small.copyWith(color: Colors.red.shade700)),
+          TextButton(
+            style: TextButton.styleFrom(
+                visualDensity: VisualDensity.compact,
+                padding: const EdgeInsets.symmetric(horizontal: 8)),
+            onPressed: item.isSyncing
+                ? null
+                : () => Get.find<CartService>().renew(item.deal.id),
+            child: const Text('Reserve again'),
+          ),
+        ],
+      );
+    }
+    return Padding(
+      padding: const EdgeInsets.only(top: 4),
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          const SizedBox(
+              width: 12,
+              height: 12,
+              child: CircularProgressIndicator(strokeWidth: 2)),
+          const SizedBox(width: 6),
+          Text('Reserving…',
+              style: small.copyWith(color: Colors.grey.shade600)),
+        ],
+      ),
     );
   }
 }

@@ -53,7 +53,7 @@ Handling extremely long lists containing thousands of items, which could become 
 [RES-105] Home Feed Performance & Memory Optimization
 ![before](./[105]before.png)
 ![after](./[105]after.png)
-![Mobileafter](./[105]Mobilebefore.png) 
+![Mobileafter](./[105]Mobilebefore.png)
 ![Mobileafter](./[105]Mobileafter.png)
 Root Cause:
 The issue was caused by an overly broad Obx widget wrapping the entire Scaffold. As captured in the initial DevTools Rebuild Stats, scrolling the feed triggered full page rebuilds that pushed the overall rebuild count of Scaffold and SmartRefresher up to nearly four hundred times. Additionally, unmanaged image caching led to continuous heap growth and potential Out Of Memory crashes.
@@ -98,6 +98,19 @@ A card leaves the screen before 1 second, so the timer is cancelled and nothing 
 
 Why this solution is effective:
 Each flash sale uses livecountdownwidget independently, causing specific text labels to rebuild separately based on localized timing instead of building everything simultaneously across the entire app or bar, making the app stutter-free and smoother. Handling the removal of expired items from the cart was moved to the Cartcontroller so it acts as the entity checking and managing background items when deleted and triggering notifications. Therefore, addPostFrameCallback was used in check expired to wait for the build to finish before displaying the expiration message.
+
+[F-3] Stock reservations with optimistic UI
+Root Cause:
+The bag operated entirely locally without backend reservation synchronization, allowing multiple users to claim scarce items simultaneously while discovering stock conflicts only at checkout. Furthermore, items lacked reservation lifecycles, countdown timers, and optimistic rollback mechanisms for contended inventory.
+
+Why this solution is effective:
+This approach introduces an additive non-breaking reservation synchronization layer that provides instant optimistic UI feedback when adding items to the bag. It integrates backend reserve and release API calls, tracks reservation lifecycles with active countdown timers, enqueues sync operations, and handles 409 contention errors by rolling back invalid items with clear messaging while gracefully processing 410 expired reservations during checkout.
+
+Alternatives considered and rejected:
+Considering disabling the quantity adjustment buttons during checkout, but rejecting it because locking standard cart actions would alter legacy user interaction behavior and was outside the immediate scope of this reservation sync task.
+
+Edge cases considered:
+Handling expired holds mid-checkout by displaying hold expired status indicators inline while automatically re-attempting reservation generation upon pressing checkout, and managing cleanup during rapid quantity reductions or item removals.
 
 Tools used: Claude AI (used for heavy coding), Gemini (used for coding, translation, and clarifying uncertainties), Copilot (used for managing settings to run the app on mobile devices)
 Next steps: Enhancing the cart list page to add more dimension, such as date and time details or extra information, instead of just displaying the item list and quantity selector. This helps users deliberate and reconsider without having to navigate back out.
