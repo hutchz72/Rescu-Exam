@@ -23,3 +23,16 @@ Using if (mounted) as part of the condition to solve this issue; however, this o
 
 Edge cases considered:
 Pausing the timer in pickup_countdown.dart temporarily in the background and having it resume when the user returns. We determined that even if it were stopped and the user returned later, it wouldn't have any noticeable effect on the user, and it carries a higher risk of destabilizing the system.
+
+[RES-103] Fix send too many request
+Root Cause:
+The issue was caused by using an undisposed ever listener. Whenever the cart changed, it repeatedly triggered API calls for every deal previously viewed, even after those screens were closed. The controller should be properly disposed of when navigating away from the screen.
+
+Why this solution is effective:
+This approach prevents repetitive API calls for closed screens and ensures that only the current, active deal screen fetches the latest stock availability.
+
+Alternatives considered and rejected:
+Using debounce to delay the API calls. However, we determined that delaying it wouldn't help, would introduce latency that harms the app's UX responsiveness, and fails to address the root cause originating from the undisposed listener.
+
+Edge cases considered:
+Handling background cart synchronization to simultaneously calculate prices, time, or remaining quantities in the background.
