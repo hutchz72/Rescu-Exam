@@ -8,6 +8,7 @@ import '../shared_widget/deal_card.dart';
 import '../shared_widget/shimmer_deal_card.dart';
 import 'home_controller.dart';
 import 'widget/flash_deals_section.dart';
+import '../shared_widget/impression_tracker.dart';
 
 class HomeScreen extends GetView<HomeController> {
   const HomeScreen({super.key});
@@ -102,8 +103,14 @@ class HomeScreen extends GetView<HomeController> {
                   ],
                 ),
               ),
-              ...controller.visibleDeals.map((deal) => DealCard(deal: deal)),
-              const SizedBox(height: 24),
+              ...controller.visibleDeals.indexed.map(
+                (e) => ImpressionTracker(
+                  dealId: e.$2.id,
+                  source: 'home_feed',
+                  position: e.$1, // index ใน feed เอง ไม่รวม flash rail/header
+                  child: DealCard(deal: e.$2),
+                ),
+              ),
             ],
           ),
         );

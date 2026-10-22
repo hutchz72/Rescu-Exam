@@ -6,6 +6,7 @@ import '../../../model/deal_model.dart';
 import '../../../routes/routes.dart';
 import '../../shared_widget/the_network_image.dart';
 import '../../shared_widget/live_countdown_widget.dart';
+import '../../shared_widget/impression_tracker.dart';
 
 /// Horizontal flash-sale rail.
 ///
@@ -40,7 +41,12 @@ class FlashDealsSection extends StatelessWidget {
             itemCount: deals.length,
             itemBuilder: (context, index) {
               final deal = deals[index];
-              return _FlashDealCardItem(deal: deal);
+              return ImpressionTracker(
+                dealId: deal.id,
+                source: 'flash_rail',
+                position: index, // index ในราง
+                child: _FlashDealCardItem(deal: deal),
+              );
             },
           ),
         ),
