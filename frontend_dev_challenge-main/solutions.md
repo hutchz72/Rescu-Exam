@@ -80,6 +80,19 @@ Relying on the device's local timezone was rejected because users may have a dif
 Edge cases considered:
 Tests cover the reported 06:00–09:30 bakery window, conversion across UTC midnight, and distinguishing a market-local pickup date from the previous day.
 
+[RES-107] Load deep-linked deals by id
+Root Cause:
+Deal details assumed every navigation supplied a DealModel through Get.arguments. External deep links only provide query parameters, so the cast of a missing argument to DealModel crashed before the page could load.
+
+Why this solution is effective:
+The controller keeps using the supplied DealModel for in-app navigation, but fetches the deal by its query-string id when opened from a deep link. The page displays a loading state while the request runs, then renders the same complete deal details and actions after the deal is loaded.
+
+Alternatives considered and rejected:
+Showing a fallback or error page for a valid deep link was rejected because the ticket requires deal 42 to open as a fully working deal page.
+
+Edge cases considered:
+Missing or malformed ids and failed requests are logged and shown as an explicit load error; valid deep links are covered by a widget test that verifies deal 42 loads with its details.
+
 [F-1] Live flash-sale countdowns
 Root Cause:
 The flash sale feature only had an "ends soon" label without showing the remaining time, making it impossible for users to know how many hours, minutes, or seconds were left, which violates good UX/UI principles. Therefore, flashSaleEndsAt was fetched from the deal model and subtracted from the current time to calculate the remaining time or check if it had expired. A live_countdown_widget was created to serve as the display component for the remaining time and structured as a card for other widgets or cards to reuse. The flash deals placed in the cart were then handled to disappear from the cart when expired by having the controller call service.remove(dealId) to delete that deal ID and display text.
@@ -125,8 +138,22 @@ Considering disabling the quantity adjustment buttons during checkout, but rejec
 Edge cases considered:
 Handling expired holds mid-checkout by displaying hold expired status indicators inline while automatically re-attempting reservation generation upon pressing checkout, and managing cleanup during rapid quantity reductions or item removals.
 
-Tools used: Claude AI (used for heavy coding), Gemini (used for coding, translation, and clarifying uncertainties), Copilot (used for managing settings to run the app on mobile devices)
-Next steps: Enhancing the cart list page to add more dimension, such as date and time details or extra information, instead of just displaying the item list and quantity selector. This helps users deliberate and reconsider without having to navigate back out.
+Tools used: Claude AI (used for heavy coding), Gemini (used for coding, translation, and clarifying uncertainties), Copilot (used for managing settings to run the app on mobile devices + heavy coding).
+
+AI suggestions that were incorrect or misleading:
+
+1. While implementing RES-107, the first UI suggestion wrapped the entire
+   'Scaffold' in an 'Obx' to handle the asynchronously loaded deal. That was
+   broader than necessary: a deal update could rebuild static page structure
+   as well as the content that actually depends on the deal. Reviewing the
+   widget tree and considering the rebuild scope caught this. The 'Scaffold'
+   was kept stable, with reactivity limited to the body and bottom action area.
+
+2. The first deep-link widget test used 'pumpAndSettle()' after opening the
+   deal page. The test timed out because the page can contain an animation
+   that keeps running, so waiting for the whole widget tree to become idle was
+   not a reliable test strategy. Running the test exposed the timeout. The
+   test now uses bounded pumps and asserts the loaded deal content directly.
 
 Q1: In this codebase, what is the difference between a GetxController's lifecycle and a widget State's lifecycle? Name one bug from Part A that exists because of confusion between the two.
 A widget's State is directly bound to the screen, created when the screen opens, and destroyed via dispose when exiting. A GetxController, however, will not be destroyed along with the screen unless route management or memory cleanup is explicitly handled. The bug that occurred was duplicate listeners in the cart, causing multiple active listeners where old instances remained stuck and repeatedly called the API.
@@ -138,3 +165,5 @@ Q3: How would you write an automated test that would have caught RES-106 before 
 The approach focuses on data preparation or mocking, writing functions with near-expiration data to fast-forward time directly to the countdown and expiration phase without waiting for real time. Code refactoring may involve injecting or passing the endTime directly into flash deal sales to lock the display time for testing.
 
 Time spent: 5-6 hours per day, accumulated continuously.
+
+Next steps: Enhancing the cart list page to add more dimension, such as date and time details or extra information, instead of just displaying the item list and quantity selector. This helps users deliberate and reconsider without having to navigate back out.
