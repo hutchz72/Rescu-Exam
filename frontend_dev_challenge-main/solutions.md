@@ -36,3 +36,16 @@ Using debounce to delay the API calls. However, we determined that delaying it w
 
 Edge cases considered:
 Handling background cart synchronization to simultaneously calculate prices, time, or remaining quantities in the background.
+
+[RES-104] Duplicate deals feed
+Root Cause:
+The issue was caused by an unmanaged asynchronous race condition between pull-to-refresh and infinite scroll pagination. When both operations executed concurrently without state validation, pagination appended incoming items to the dataset while a refresh was resetting it, resulting in duplicate or out-of-order records.
+
+Why this solution is effective:
+This approach introduces concurrency state guards to prevent overlapping data mutations, ensuring that the deal list is updated cleanly and sequentially without cross-request data contamination.
+
+Alternatives considered and rejected:
+Considering traditional pagination, but rejecting it because an e-commerce home feed should allow smooth scrolling for a great user experience, and changing the core design from infinite scrolling to pagination was outside the scope of this performance fix ticket.
+
+Edge cases considered:
+Handling extremely long lists containing thousands of items, which could become bloated and potentially cause a drop in frame rate (FPS).
