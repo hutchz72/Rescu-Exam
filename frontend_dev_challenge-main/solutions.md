@@ -67,7 +67,7 @@ Considering traditional pagination, but rejecting it because an e-commerce home 
 Edge cases considered:
 Handling extremely long lists containing thousands of items, which could become bloated and potentially cause a drop in frame rate (FPS).
 
-[f-1] Live flash-sale countdowns
+[F-1] Live flash-sale countdowns
 Root Cause:
 The flash sale feature only had an "ends soon" label without showing the remaining time, making it impossible for users to know how many hours, minutes, or seconds were left, which violates good UX/UI principles. Therefore, flashSaleEndsAt was fetched from the deal model and subtracted from the current time to calculate the remaining time or check if it had expired. A live_countdown_widget was created to serve as the display component for the remaining time and structured as a card for other widgets or cards to reuse. The flash deals placed in the cart were then handled to disappear from the cart when expired by having the controller call service.remove(dealId) to delete that deal ID and display text.
 
@@ -79,6 +79,25 @@ Implementing a global timing system that synchronizes identically across the ent
 
 Edge cases considered:
 Supporting time zone handling even if the user manually changes their device time or switches device time zones back and forth.
+
+[F-2] Impression Tracking
+![F-2 analytics debug](./[F2]analytics-debug.png)
+Root Cause:
+Flutter has no built-in notion of a card being visible for 1 continuous second, and the existing AnalyticsService could only log an event immediately. Doing it the naive way goes wrong in three places. Logging in onVisibilityChanged counts cards that only pass by while scrolling. A "logged" flag inside the widget is lost whenever the list item is disposed or rebuilt, and it can never dedupe across Home, flash rail and Search. Sending one request per event would flood the backend while the user scrolls. So the state has to live in two places. The dwell time belongs in the card's own State, while the dedupe set and the batch queue belong in the permanent AnalyticsService.
+
+Why this solution is effective:
+ImpressionTracker wraps each card with VisibilityDetector and starts a 1 second Timer when the card reaches 50 percent visibility. If it drops below 50 percent the timer is cancelled, so the second is truly continuous. trackDealImpression dedupes with a Set of deal ids that lives for the whole app session, then puts the event in a queue. The queue is sent when it reaches 10 events or 15 seconds after the first unsent event. The 15 second timer starts only when the queue goes from empty to non-empty and is never restarted by later events. If a send fails the events go back into the queue and are retried. The tracker uses no setState and no Obx, so it adds no rebuilds. The only work during scrolling is a debounced callback and one Timer per card that is currently on screen.
+
+The debug screen confirms it. At 15:35:26 three impressions appear, deal 1 and deal 5 from flash_rail and deal 2 from home_feed at position 1. After scrolling down, deals 19 to 21 appear at positions 18 to 20, and deal 20 is show up when I open detail 20 it at 15:36:48.
+
+Alternatives considered and rejected:
+Logging immediately when the card becomes visible with no timer was rejected because it breaks the 1 second rule. Deduping with a bool inside the widget was rejected because it resets on dispose and cannot span screens. Sending one request per event was rejected because the spec asks for batching. Putting the tracker inside DealCard was rejected because DealCard.source is already used for the deal page route, and the flash rail does not use DealCard at all, so I wrapped the cards at the call sites instead.
+
+Edge cases considered:
+A card leaves the screen before 1 second, so the timer is cancelled and nothing is logged. Search results change while a card is counting, so didUpdateWidget cancels the old deal's timer, because the list has no keys and the State can be reused for a different deal. Another route is pushed on top, so the timer checks ModalRoute.isCurrent and does not count while the screen is covered. The batch request fails, so the events are re-queued. One case is not handled yet, which is the app going to the background during the 1 second window. That would need a WidgetsBindingObserver.
+
+Why this solution is effective:
+Each flash sale uses livecountdownwidget independently, causing specific text labels to rebuild separately based on localized timing instead of building everything simultaneously across the entire app or bar, making the app stutter-free and smoother. Handling the removal of expired items from the cart was moved to the Cartcontroller so it acts as the entity checking and managing background items when deleted and triggering notifications. Therefore, addPostFrameCallback was used in check expired to wait for the build to finish before displaying the expiration message.
 
 Tools used: Claude AI (used for heavy coding), Gemini (used for coding, translation, and clarifying uncertainties), Copilot (used for managing settings to run the app on mobile devices)
 Next steps: Enhancing the cart list page to add more dimension, such as date and time details or extra information, instead of just displaying the item list and quantity selector. This helps users deliberate and reconsider without having to navigate back out.
