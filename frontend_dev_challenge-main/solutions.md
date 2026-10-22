@@ -11,3 +11,15 @@ Making it so the user has to finish writing or typing before sending a call to t
 Edge cases considered:
 Handling the immediate text deletion when the user deletes that text in order to type anew.
 
+[RES-102] Fix My Orders Crash
+Root Cause:
+The issue occurs because background operations continue running even after the user navigates away from the screen. Since the timer is not stopped upon exiting, it keeps executing in the background and attempts to trigger updates on a destroyed widget, resulting in a setState() called after dispose() error.
+
+Why this solution is effective:
+Canceling the timer within the dispose() method ensures that background tasks are properly terminated when the screen is closed. This prevents unnecessary resource usage, stops outdated operations from running, and cleanly resolves the lifecycle-related error.
+
+Alternatives considered and rejected:
+Using if (mounted) as part of the condition to solve this issue; however, this only hides the symptom where the error occurs rather than fixing the root cause that triggers dispose().
+
+Edge cases considered:
+Pausing the timer in pickup_countdown.dart temporarily in the background and having it resume when the user returns. We determined that even if it were stopped and the user returned later, it wouldn't have any noticeable effect on the user, and it carries a higher risk of destabilizing the system.
