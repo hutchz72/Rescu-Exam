@@ -49,3 +49,20 @@ Considering traditional pagination, but rejecting it because an e-commerce home 
 
 Edge cases considered:
 Handling extremely long lists containing thousands of items, which could become bloated and potentially cause a drop in frame rate (FPS).
+
+[RES-105] Home Feed Performance & Memory Optimization
+![before](./[105]before.png)
+![after](./[105]after.png)
+![Mobileafter](./[105]Mobilebefore.png) 
+![Mobileafter](./[105]Mobileafter.png)
+Root Cause:
+The issue was caused by an overly broad Obx widget wrapping the entire Scaffold. As captured in the initial DevTools Rebuild Stats, scrolling the feed triggered full page rebuilds that pushed the overall rebuild count of Scaffold and SmartRefresher up to nearly four hundred times. Additionally, unmanaged image caching led to continuous heap growth and potential Out Of Memory crashes.
+
+Why this solution is effective:
+Wrapping the entire AppBar, ListView, or various buttons with Obx caused widgets to be rebuilt unnecessarily 733 times as shown in the image ![before](./[105]before.png) ![after](./[105]after.png), resulting in slow frames, severe jank, and app stuttering. However, by breaking down Obx into smaller, segmented parts, widgets are built only in necessary areas, thereby reducing processing load and ensuring smooth frames.
+
+Alternatives considered and rejected:
+Considering traditional pagination, but rejecting it because an e-commerce home feed should allow smooth scrolling for a great user experience, and changing the core design from infinite scrolling to pagination was outside the scope of this performance fix ticket.
+
+Edge cases considered:
+Handling extremely long lists containing thousands of items, which could become bloated and potentially cause a drop in frame rate (FPS).
