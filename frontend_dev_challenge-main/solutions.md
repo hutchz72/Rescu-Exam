@@ -66,3 +66,30 @@ Considering traditional pagination, but rejecting it because an e-commerce home 
 
 Edge cases considered:
 Handling extremely long lists containing thousands of items, which could become bloated and potentially cause a drop in frame rate (FPS).
+
+[f-1] Live flash-sale countdowns
+Root Cause:
+The flash sale feature only had an "ends soon" label without showing the remaining time, making it impossible for users to know how many hours, minutes, or seconds were left, which violates good UX/UI principles. Therefore, flashSaleEndsAt was fetched from the deal model and subtracted from the current time to calculate the remaining time or check if it had expired. A live_countdown_widget was created to serve as the display component for the remaining time and structured as a card for other widgets or cards to reuse. The flash deals placed in the cart were then handled to disappear from the cart when expired by having the controller call service.remove(dealId) to delete that deal ID and display text.
+
+Why this solution is effective:
+Each flash sale uses livecountdownwidget independently, causing specific text labels to rebuild separately based on localized timing instead of building everything simultaneously across the entire app or bar, making the app stutter-free and smoother. Handling the removal of expired items from the cart was moved to the Cartcontroller so it acts as the entity checking and managing background items when deleted and triggering notifications. Therefore, addPostFrameCallback was used in check expired to wait for the build to finish before displaying the expiration message.
+
+Alternatives considered and rejected:
+Implementing a global timing system that synchronizes identically across the entire app. This was rejected because time differences across regions would cause chaotic global timing, creating unnecessary complexity and inefficiency compared to the independent approach.
+
+Edge cases considered:
+Supporting time zone handling even if the user manually changes their device time or switches device time zones back and forth.
+
+Tools used: Claude AI (used for heavy coding), Gemini (used for coding, translation, and clarifying uncertainties), Copilot (used for managing settings to run the app on mobile devices)
+Next steps: Enhancing the cart list page to add more dimension, such as date and time details or extra information, instead of just displaying the item list and quantity selector. This helps users deliberate and reconsider without having to navigate back out.
+
+Q1: In this codebase, what is the difference between a GetxController's lifecycle and a widget State's lifecycle? Name one bug from Part A that exists because of confusion between the two.
+A widget's State is directly bound to the screen, created when the screen opens, and destroyed via dispose when exiting. A GetxController, however, will not be destroyed along with the screen unless route management or memory cleanup is explicitly handled. The bug that occurred was duplicate listeners in the cart, causing multiple active listeners where old instances remained stuck and repeatedly called the API.
+
+Q2: When does wrapping a large subtree in a single Obx hurt you? How do you decide how tightly to scope reactivity?
+It forces the entire screen subtree to rebuild unnecessarily every time the Obx value changes, rebuilding unrelated parts and causing UI stutter and lag. The criteria for scoping is to keep Obx narrow, targeting only the specific widget parts that change, such as the selected cart count or changing value fields.
+
+Q3: How would you write an automated test that would have caught RES-106 before release? What (if anything) would you change in the code to make such a test possible?
+The approach focuses on data preparation or mocking, writing functions with near-expiration data to fast-forward time directly to the countdown and expiration phase without waiting for real time. Code refactoring may involve injecting or passing the endTime directly into flash deal sales to lock the display time for testing.
+
+Time spent: 5-6 hours per day, accumulated continuously.
