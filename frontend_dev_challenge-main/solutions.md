@@ -67,6 +67,19 @@ Considering traditional pagination, but rejecting it because an e-commerce home 
 Edge cases considered:
 Handling extremely long lists containing thousands of items, which could become bloated and potentially cause a drop in frame rate (FPS).
 
+[RES-106] Correct pickup times and today's filter
+Root Cause:
+The API returns pickup-window instants in UTC for a market that operates in Bangkok time (UTC+7). Formatting those UTC DateTime values directly showed UTC wall-clock times, and comparing only the UTC start day with the device's current day missed market-local dates near midnight.
+
+Why this solution is effective:
+Pickup labels and calendar-day filtering now convert both the pickup instant and current time to the market's UTC+7 wall-clock date/time. Comparisons such as whether a pickup is currently open continue using the original absolute instants, so they remain correct regardless of the device timezone.
+
+Alternatives considered and rejected:
+Relying on the device's local timezone was rejected because users may have a different timezone configured from the Bangkok market.
+
+Edge cases considered:
+Tests cover the reported 06:00–09:30 bakery window, conversion across UTC midnight, and distinguishing a market-local pickup date from the previous day.
+
 [F-1] Live flash-sale countdowns
 Root Cause:
 The flash sale feature only had an "ends soon" label without showing the remaining time, making it impossible for users to know how many hours, minutes, or seconds were left, which violates good UX/UI principles. Therefore, flashSaleEndsAt was fetched from the deal model and subtracted from the current time to calculate the remaining time or check if it had expired. A live_countdown_widget was created to serve as the display component for the remaining time and structured as a card for other widgets or cards to reuse. The flash deals placed in the cart were then handled to disappear from the cart when expired by having the controller call service.remove(dealId) to delete that deal ID and display text.

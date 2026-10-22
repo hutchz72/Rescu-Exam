@@ -1,7 +1,9 @@
 import 'package:intl/intl.dart';
 
-/// A store's pickup window. The API sends instants as ISO-8601 UTC strings.
+/// A store's pickup window. The API sends UTC instants for the Bangkok market.
 class PickupWindowModel {
+  static const _marketUtcOffset = Duration(hours: 7);
+
   final DateTime start;
   final DateTime end;
 
@@ -15,11 +17,21 @@ class PickupWindowModel {
   }
 
   /// Human readable label, e.g. "17:30 – 21:00".
-  String get label =>
-      '${DateFormat('HH:mm').format(start)} – ${DateFormat('HH:mm').format(end)}';
+  String get label {
+    final marketStart = start.toUtc().add(_marketUtcOffset);
+    final marketEnd = end.toUtc().add(_marketUtcOffset);
+    return '${DateFormat('HH:mm').format(marketStart)} – '
+        '${DateFormat('HH:mm').format(marketEnd)}';
+  }
 
   /// Whether pickup starts today.
-  bool get isToday => start.day == DateTime.now().day;
+  bool get isToday {
+    final marketStart = start.toUtc().add(_marketUtcOffset);
+    final marketNow = DateTime.now().toUtc().add(_marketUtcOffset);
+    return marketStart.year == marketNow.year &&
+        marketStart.month == marketNow.month &&
+        marketStart.day == marketNow.day;
+  }
 
   /// Whether the store is currently accepting pickups.
   bool get isOpenNow {
