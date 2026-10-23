@@ -136,7 +136,7 @@ class CartService extends GetxService {
     if (held != null && held.quantity == target && item.hasValidHold) return;
 
     try {
-      final fresh = await _orders.reserve(dealId, quantity: target);
+      final fresh = await _reserveWithRetry(dealId, target);
       if (!identical(_find(dealId), item)) {
         _releaseReservation(fresh);
         return;
@@ -170,9 +170,28 @@ class CartService extends GetxService {
     }
   }
 
+  Future<ReservationModel> _reserveWithRetry(int dealId, int quantity) async {
+    try {
+      return await _orders.reserve(dealId, quantity: quantity);
+    } on ApiException catch (e) {
+      if (e.statusCode != 409 ||
+          !e.message.toLowerCase().contains('try again')) {
+        rethrow;
+      }
+      LogService.log('retrying temporarily rejected reservation for $dealId');
+      await Future<void>.delayed(const Duration(milliseconds: 300));
+      return _orders.reserve(dealId, quantity: quantity);
+    }
+  }
+
   String _reason(Object e) {
     if (e is ApiException) {
-      if (e.statusCode == 409) return 'it was just taken by someone else';
+      if (e.statusCode == 409) {
+        if (e.message.toLowerCase().contains('not enough stock')) {
+          return 'there is not enough stock left';
+        }
+        return 'the reservation was temporarily declined; please try again';
+      }
       if (e.statusCode == 404) return 'it is no longer available';
     }
     return "we couldn't reserve it right now";

@@ -130,13 +130,13 @@ Root Cause:
 The bag operated entirely locally without backend reservation synchronization, allowing multiple users to claim scarce items simultaneously while discovering stock conflicts only at checkout. Furthermore, items lacked reservation lifecycles, countdown timers, and optimistic rollback mechanisms for contended inventory.
 
 Why this solution is effective:
-This approach introduces an additive non-breaking reservation synchronization layer that provides instant optimistic UI feedback when adding items to the bag. It integrates backend reserve and release API calls, tracks reservation lifecycles with active countdown timers, enqueues sync operations, and handles 409 contention errors by rolling back invalid items with clear messaging while gracefully processing 410 expired reservations during checkout.
+This approach introduces an additive non-breaking reservation synchronization layer that provides instant optimistic UI feedback when adding items to the bag. It integrates backend reserve and release API calls, tracks reservation lifecycles with active countdown timers, enqueues sync operations, and handles 409 contention errors by rolling back invalid items with clear messaging while gracefully processing 410 expired reservations during checkout. A 409 response is only described as insufficient stock when its message identifies that condition; a temporary reservation rejection explicitly asking the client to try again gets one bounded retry before rollback.
 
 Alternatives considered and rejected:
 Considering disabling the quantity adjustment buttons during checkout, but rejecting it because locking standard cart actions would alter legacy user interaction behavior and was outside the immediate scope of this reservation sync task.
 
 Edge cases considered:
-Handling expired holds mid-checkout by displaying hold expired status indicators inline while automatically re-attempting reservation generation upon pressing checkout, and managing cleanup during rapid quantity reductions or item removals.
+Handling expired holds mid-checkout by displaying hold expired status indicators inline while automatically re-attempting reservation generation upon pressing checkout, distinguishing temporary 409 reservation contention from confirmed insufficient stock, retrying an explicitly temporary rejection once, and managing cleanup during rapid quantity reductions or item removals.
 
 Tools used: Claude AI (used for heavy coding), Gemini (used for coding, translation, and clarifying uncertainties), Copilot (used for managing settings to run the app on mobile devices + heavy coding).
 
