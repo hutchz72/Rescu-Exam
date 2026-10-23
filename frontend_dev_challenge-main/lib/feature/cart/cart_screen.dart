@@ -23,9 +23,16 @@ class CartScreen extends GetView<CartController> {
         return ListView.builder(
           padding: const EdgeInsets.symmetric(vertical: 8),
           itemCount: cart.items.length,
+          findChildIndexCallback: (key) {
+            if (key is! ValueKey<int>) return null;
+            final index =
+                cart.items.indexWhere((item) => item.deal.id == key.value);
+            return index < 0 ? null : index;
+          },
           itemBuilder: (context, index) {
             final item = cart.items[index];
             return Card(
+              key: ValueKey(item.deal.id),
               margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 6),
               color: Colors.white,
               elevation: 0.5,
@@ -140,9 +147,11 @@ class _HoldStatus extends StatelessWidget {
           children: [
             Icon(Icons.timer_outlined, size: 14, color: Colors.grey.shade700),
             const SizedBox(width: 4),
-            ReservationCountdown(
-              expiresAt: item.reservation!.expiresAt,
-              style: small.copyWith(color: Colors.grey.shade700),
+            Flexible(
+              child: ReservationCountdown(
+                expiresAt: item.reservation!.expiresAt,
+                style: small.copyWith(color: Colors.grey.shade700),
+              ),
             ),
           ],
         ),
@@ -157,7 +166,7 @@ class _HoldStatus extends StatelessWidget {
           TextButton(
             style: TextButton.styleFrom(
                 visualDensity: VisualDensity.compact,
-                padding: const EdgeInsets.symmetric(horizontal: 8)),
+                padding: const EdgeInsets.symmetric(horizontal: 4)),
             onPressed: item.isSyncing
                 ? null
                 : () => Get.find<CartService>().renew(item.deal.id),

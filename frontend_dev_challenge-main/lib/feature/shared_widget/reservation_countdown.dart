@@ -54,6 +54,8 @@ class _ReservationCountdownState extends State<ReservationCountdown> {
     final urgent = r.inSeconds < 60;
     return Text(
       'Held for $m:$s',
+      maxLines: 1,
+      overflow: TextOverflow.ellipsis,
       style: (widget.style ?? const TextStyle()).copyWith(
         color: urgent ? Colors.red.shade700 : null,
       ),
