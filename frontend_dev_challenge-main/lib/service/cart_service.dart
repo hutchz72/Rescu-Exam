@@ -44,19 +44,19 @@ class CartService extends GetxService {
       items.refresh();
       _enqueueSync(dealId);
     }
-    _recount();
+    _afterHoldChange();
   }
 
   void remove(int dealId) {
     final removed = items.firstWhereOrNull((i) => i.deal.id == dealId);
     items.removeWhere((i) => i.deal.id == dealId);
     if (removed != null) _releaseHold(removed);
-    _recount();
+    _afterHoldChange();
   }
 
   void clear() {
     items.clear();
-    _recount();
+    _afterHoldChange();
   }
 
   num get total => items.fold(0, (sum, i) => sum + i.lineTotal);
@@ -215,7 +215,12 @@ class CartService extends GetxService {
     DateTime? next;
     for (final i in items) {
       final r = i.reservation;
-      if (r == null || !i.hasValidHold) continue;
+      final saleEnd = i.deal.flashSaleEndsAt;
+      if (r == null ||
+          !i.hasValidHold ||
+          (saleEnd != null && !saleEnd.isAfter(DateTime.now()))) {
+        continue;
+      }
       if (next == null || r.expiresAt.isBefore(next)) next = r.expiresAt;
     }
     if (next == null) return;
@@ -229,7 +234,12 @@ class CartService extends GetxService {
 
   void _onExpiryTick() {
     final newlyExpired = items
-        .where((i) => i.isExpired && _expiryNotified.add(i.reservation!.id))
+        .where((i) {
+          final saleEnd = i.deal.flashSaleEndsAt;
+          return i.isExpired &&
+              (saleEnd == null || saleEnd.isAfter(DateTime.now())) &&
+              _expiryNotified.add(i.reservation!.id);
+        })
         .toList();
     items.refresh();
     if (newlyExpired.isNotEmpty) {
